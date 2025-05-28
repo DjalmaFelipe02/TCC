@@ -6,21 +6,17 @@ from strategy.payment_processor import PaymentProcessor, CreditCardStrategy, Pay
 
 app = Flask(__name__)
 
-#Para rodar o server, use o comando: (python app.py), dentro do diretório flaskApp
-# O servidor estará rodando em http://127.0.0.1:5000
-
-# As Rotes testadas no ThunderClient ou Postman foram:
-#curl -X GET "http://127.0.0.1:5000/serialize/json"
-#curl -X POST "http://127.0.0.1:5000/pay/creditcard" -H "Content-Type: application/json" -d '{"amount": 100, "currency": "USD"}'
-#curl -X POST "http://127.0.0.1:5000/checkout" -H "Content-Type: application/json" -d '{"product_id": 1, "zip_code": "12345", "subtotal": 100.0}'
-
-# app.py (Rota)
-@app.route("/")
-def index():
-    return "Hello, World!"
-
 @app.route("/serialize/<format>")
 def handle_serialization(format):
+    """
+    Serializa dados no formato especificado (json ou xml).
+
+    Args:
+        format (str): Formato de serialização ('json' ou 'xml').
+
+    Returns:
+        Response: Dados serializados ou mensagem de erro.
+    """
     data = {"user": {"name": "Alice", "age": 25, "active": True}}
     try:
         serializer = SerializerFactory.create_serializer(format)
@@ -32,9 +28,18 @@ def handle_serialization(format):
         return {"error": str(e)}, 400
 
 
-# app.py (Rota)
+
 @app.route("/pay/<method>", methods=["POST"])
 def process_payment(method):
+    """
+    Processa pagamento utilizando a estratégia informada(Strategy).
+
+    Args:
+        method (str): Método de pagamento ('creditcard' ou 'paypal').
+
+    Returns:
+        dict: Resultado do pagamento ou mensagem de erro.
+    """
     amount = request.json.get("amount")
     if method == "creditcard":
         processor = PaymentProcessor(CreditCardStrategy())
@@ -47,6 +52,12 @@ def process_payment(method):
 
 @app.route("/checkout", methods=["POST"])
 def checkout():
+    """
+    Realiza o checkout utilizando o padrão Facade.
+
+    Returns:
+        dict: Resultado do pedido ou mensagem de erro.
+    """
     data = request.json
     facade = CheckoutFacade()
     try:

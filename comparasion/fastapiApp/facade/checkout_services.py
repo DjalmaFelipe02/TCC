@@ -3,6 +3,10 @@
 from .subsystems import InventoryService, ShippingService, TaxService
 
 class CheckoutFacade:
+    """
+    A classe CheckoutFacade segue o padrão de projeto Fachada (Facade).
+    fornece uma interface simples para o processo de checkout, escondendo a complexidade dos serviços de estoque, envio e imposto.
+    """
     def __init__(self):
         self._inventory = InventoryService()
         self._shipping = ShippingService()

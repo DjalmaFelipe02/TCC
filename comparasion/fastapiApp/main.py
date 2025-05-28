@@ -2,17 +2,8 @@ from fastapi import FastAPI, HTTPException, Response, Path, Depends
 from fastapiApp.strategy.payment_processor import PaymentProcessor, CreditCardStrategy, PayPalStrategy
 from fastapiApp.facade.checkout_services import CheckoutFacade
 from pydantic import BaseModel
-from typing import Literal
 
 app = FastAPI()
-
-#Como colocar o fastapi para rodar o servidor
-# uvicorn fastapiApp.main:app --reload
-
-
-# Testar essa Rote no ThunderClient ou Postman
-#curl -X POST "http://127.0.0.1:8000/checkout" -H "Content-Type: application/json" -d '{"product_id": 1, "zip_code": "12345", "subtotal": 100.0}'
-
 
 # Classe para requisição de pagamento
 class PaymentRequest(BaseModel):
@@ -26,6 +17,18 @@ class CheckoutRequest(BaseModel):
 
 # Injeção de Dependência
 def get_processor(method: str = Path(...)):
+    """
+    Injeta o Strategy de pagamento baseada no método informado.
+
+    Args:
+        method (str): Método de pagamento ('creditcard' ou 'paypal').
+
+    Returns:
+        PaymentProcessor: Processador de pagamento com a estratégia escolhida.
+
+    Raises:
+        HTTPException: Se o método for inválido.
+    """
     if method == "creditcard":
         return PaymentProcessor(CreditCardStrategy())
     elif method == "paypal":
@@ -38,6 +41,17 @@ async def pay(
     request: PaymentRequest,
     processor: PaymentProcessor = Depends(get_processor)
 ):
+    """
+    Processa pagamento utilizando a estratégia informada (Strategy).
+
+    Args:
+        method (str): Método de pagamento ('creditcard' ou 'paypal').
+        request (PaymentRequest): Dados do pagamento.
+        processor (PaymentProcessor): Processador injetado.
+
+    Returns:
+        dict: Resultado do pagamento e moeda.
+    """
     return {
         "result": processor.execute_payment(request.amount),
         "currency": request.currency
@@ -45,6 +59,18 @@ async def pay(
 
 @app.post("/checkout")
 async def checkout(request: CheckoutRequest):
+    """
+    Realiza o checkout utilizando o padrão Facade.
+
+    Args:
+        request (CheckoutRequest): Dados do pedido.
+
+    Returns:
+        dict: Resultado do pedido ou mensagem de erro.
+
+    Raises:
+        HTTPException: Se ocorrer erro no processamento do pedido.
+    """
     facade = CheckoutFacade()
     try:
         return facade.complete_order(
