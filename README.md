@@ -71,8 +71,3 @@ Para enriquecer ainda mais a análise comparativa, você pode:
    - Comparar como cada framework se comporta em cenários de alta carga.
 
 ---
-
-### **Conclusão**
-O trabalho está de acordo com o tema, pois implementa os padrões de projeto em ambos os frameworks e permite uma análise comparativa. 
-Com os testes de carga e a documentação dos resultados, você terá uma base sólida para concluir qual
-framework é mais adequado para diferentes cenários. Se precisar de ajuda para documentar ou interpretar os resultados, é só avisar! 😊
