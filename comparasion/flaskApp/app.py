@@ -2,9 +2,9 @@ from flask import Flask, request, Response, jsonify, abort
 from werkzeug.exceptions import BadRequest, NotFound
 
 # Importações dos padrões de projeto
-# Corrigido o nome da pasta para abstract_factory
-from .abstract_factory.factory import SerializerFactory
-from .abstract_factory.serializers import Serializer # Importar a interface base
+# Importações da Abstract Factory refatorada
+from .abstract_factory.providers import SerializerProvider, get_provider, JsonProvider # Importar JsonProvider para checagem
+from .abstract_factory.serializers import CompactSerializer, ReadableSerializer # Importar interfaces base
 from .facade.checkout_services import CheckoutFacade
 from .strategy.payment_processor import PaymentProcessor, CreditCardStrategy, PayPalStrategy, PaymentStrategy
 
@@ -17,28 +17,41 @@ DEFAULT_SERIALIZATION_DATA_FLASK = {"name": "Flask User", "id": 456, "active": F
 
 # --- Implementação do Padrão Abstract Factory (Serialização) ---
 @app.route("/serialize/<string:format>", methods=["GET"])
-def handle_serialization_factory_get(format):
-    """Endpoint GET para demonstrar o padrão Abstract Factory (Flask).
+def handle_serialization_abstract_factory(format):
+    """Endpoint GET para demonstrar o padrão Abstract Factory canônico (Flask).
 
-    Recebe o formato desejado na URL (json ou xml).
-    Usa dados de exemplo definidos internamente.
-    Utiliza a SerializerFactory para obter a instância correta do Serializer.
-    Retorna os dados serializados com o mimetype apropriado.
+    Recebe o formato (json/xml) na URL e o estilo (compact/readable) como query param.
+    Usa a Fábrica Abstrata (`SerializerProvider`) para criar o serializador apropriado.
 
     Exemplo de teste:
-    curl -X GET "http://127.0.0.1:5000/serialize/json"
-    curl -X GET "http://127.0.0.1:5000/serialize/xml"
+    curl -X GET "http://127.0.0.1:5000/serialize/json?style=readable"
+    curl -X GET "http://127.0.0.1:5000/serialize/xml?style=compact"
     """
+    # Obtém o estilo do query parameter, default para "readable"
+    style = request.args.get("style", "readable").lower()
+    if style not in ["compact", "readable"]:
+        abort(400, description="Parâmetro 'style' inválido. Use 'compact' ou 'readable'.")
+
     try:
-        # Utiliza a Factory para obter o serializador correto
-        serializer = SerializerFactory.create_serializer(format)
-        # Usa os dados de exemplo definidos no início do arquivo
+        # Obtém a fábrica concreta (Provider) com base no formato
+        provider = get_provider(format)
+
+        # Usa a fábrica (provider) para criar o serializador da família/estilo correto
+        if style == "compact":
+            serializer = provider.create_compact_serializer()
+        else: # style == "readable"
+            serializer = provider.create_readable_serializer()
+
+        # Serializa os dados de exemplo
         serialized_data = serializer.serialize(DEFAULT_SERIALIZATION_DATA_FLASK)
-        mimetype = f"application/{format}"
+        # Determina o media type com base no formato da fábrica
+        media_type = f"application/{format}"
+
         # Retorna a resposta com os dados serializados e o mimetype correto
-        return Response(serialized_data, mimetype=mimetype)
+        return Response(serialized_data, mimetype=media_type)
+
     except ValueError as e:
-        # Retorna erro 400 se o formato for inválido
+        # Captura erros da get_provider ou dos serializers
         abort(400, description=str(e))
     except Exception as e:
         # Tratamento genérico de erro
