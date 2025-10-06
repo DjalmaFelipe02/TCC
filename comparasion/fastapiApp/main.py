@@ -1,129 +1,204 @@
-from fastapi import FastAPI, HTTPException, Response, Path, Query, Depends
-from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
-from typing import Literal, Dict, Any
+"""
+Aplicação principal FastAPI - TCC APIs REST.
+"""
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+import time
+import uvicorn
 
-# Importações dos padrões de projeto
-from .strategy.payment_processor import PaymentProcessor, CreditCardStrategy, PayPalStrategy, PaymentStrategy
-from .facade.checkout_services import CheckoutFacade
-# Importações da Abstract Factory refatorada
-from .abstract_factory.providers import SerializerProvider, get_provider, JsonProvider, XmlProvider # Importar as fábricas concretas
-from .abstract_factory.serializers import CompactSerializer, ReadableSerializer # Importar interfaces base dos produtos
+from app.core.config import settings
+from app.core.logging import setup_logging, get_logger
+from app.core.database import db_manager
+from app.api.v1.users import router as users_router
+from app.api.v1.products import router as products_router
 
-# --- Configuração da Aplicação FastAPI ---
+# Configurar logging
+setup_logging()
+logger = get_logger("main")
+
+# Criar aplicação FastAPI
 app = FastAPI(
-    title="API Comparativa FastAPI vs Flask (Abstract Factory Refatorado)",
-    description="Demonstração da aplicação dos padrões Abstract Factory (canônico), Facade e Strategy usando FastAPI.",
-    version="1.1.0" # Versão incrementada
+    title=settings.PROJECT_NAME,
+    description=settings.PROJECT_DESCRIPTION,
+    version=settings.VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
-# --- Modelos Pydantic para Validação de Requisição/Resposta ---
-class PaymentRequest(BaseModel):
-    amount: float
-    currency: str = "USD"
+# ============================================================================
+# MIDDLEWARE
+# ============================================================================
 
-class CheckoutRequest(BaseModel):
-    product_id: int
-    zip_code: str
-    subtotal: float
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Dados de exemplo para serialização
-DEFAULT_SERIALIZATION_DATA = {"user": {"name": "FastAPI User", "id": 123, "active": True, "roles": ["admin", "editor"]}}
+# Trusted Host (segurança)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["localhost", "127.0.0.1", "0.0.0.0"]
+)
 
-# --- Implementação do Padrão Strategy (Pagamento) - Sem alterações ---
 
-def get_payment_processor(method: Literal["creditcard", "paypal"] = Path(...)) -> PaymentProcessor:
-    if method == "creditcard":
-        strategy = CreditCardStrategy()
-    elif method == "paypal":
-        strategy = PayPalStrategy()
-    return PaymentProcessor(strategy)
-
-@app.post("/pay/{method}", tags=["Strategy Pattern"], summary="Processa um pagamento usando uma estratégia específica (POST)")
-async def process_payment_strategy(
-    request: PaymentRequest,
-    processor: PaymentProcessor = Depends(get_payment_processor)
-) -> JSONResponse:
-    result = processor.execute_payment(request.amount)
-    return JSONResponse(content={"payment_details": result, "currency": request.currency})
-
-# --- Implementação do Padrão Facade (Checkout) - Sem alterações ---
-
-def get_checkout_facade() -> CheckoutFacade:
-    return CheckoutFacade()
-
-@app.post("/checkout", tags=["Facade Pattern"], summary="Processa um checkout simplificado usando Facade (POST)")
-async def process_checkout_facade(
-    request: CheckoutRequest,
-    facade: CheckoutFacade = Depends(get_checkout_facade)
-) -> JSONResponse: 
-    """
-    Endpoint para demonstrar o padrão Facade.
-
-    Recebe os detalhes do pedido no corpo da requisição.
-    A dependência `get_checkout_facade` injeta a instância da `CheckoutFacade`,
-    que simplifica a interação com os subsistemas de estoque, frete e impostos.
-    """
+# Middleware de logging personalizado
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    """Middleware para logging de requisições."""
+    start_time = time.time()
+    
+    # Log da requisição
+    logger.info(f"REQUEST: {request.method} {request.url.path} - IP: {request.client.host}")
+    
     try:
-        result = facade.complete_order(
-            product_id=request.product_id,
-            zip_code=request.zip_code,
-            subtotal=request.subtotal
+        response = await call_next(request)
+        
+        # Calcular tempo de processamento
+        process_time = time.time() - start_time
+        
+        # Log da resposta
+        logger.info(
+            f"RESPONSE: {request.method} {request.url.path} - "
+            f"Status: {response.status_code} - Time: {process_time:.3f}s"
         )
-        return JSONResponse(content=result)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-# --- Implementação do Padrão Abstract Factory (Serialização - Refatorado) ---
-
-# Dependência para obter a Fábrica Abstrata correta (Provider)
-def get_serializer_provider(format: Literal["json", "xml"] = Path(...)) -> SerializerProvider:
-    """Dependência FastAPI para injetar a Fábrica Abstrata (Provider) correta."""
-    try:
-        return get_provider(format)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.get("/serialize/{format}", tags=["Abstract Factory Pattern"], summary="Serializa dados de exemplo usando Abstract Factory (GET)")
-async def serialize_data_abstract_factory(
-    provider: SerializerProvider = Depends(get_serializer_provider),
-    style: Literal["compact", "readable"] = Query("readable", description="Estilo de serialização: compact ou readable")
-) -> Response:
-    """Endpoint GET para demonstrar o padrão Abstract Factory canônico.
-
-    Recebe o formato (json/xml) na URL e o estilo (compact/readable) como query param.
-    Usa a Fábrica Abstrata (`SerializerProvider`) injetada para criar o serializador
-    apropriado da família (compacta ou legível) e formato corretos.
-
-    Exemplos:
-    - GET /serialize/json?style=readable
-    - GET /serialize/xml?style=compact
-    """
-    try:
-        # Usa a fábrica (provider) para criar o serializador da família/estilo correto
-        if style == "compact":
-            serializer = provider.create_compact_serializer()
-        else: # style == "readable"
-            serializer = provider.create_readable_serializer()
-
-        # Serializa os dados de exemplo
-        serialized_data = serializer.serialize(DEFAULT_SERIALIZATION_DATA)
-        # Determina o media type com base no formato da fábrica (implícito no provider)
-        format = "json" if isinstance(provider, JsonProvider) else "xml"
-        media_type = f"application/{format}"
-
-        # Retorna a resposta como texto plano para preservar a formatação
-        return PlainTextResponse(content=serialized_data, media_type=media_type)
-
+        
+        # Adicionar header com tempo de processamento
+        response.headers["X-Process-Time"] = str(process_time)
+        
+        return response
+        
     except Exception as e:
-        # Captura erros inesperados durante a criação ou serialização
-        raise HTTPException(status_code=500, detail=f"Erro interno ao serializar: {e}")
+        process_time = time.time() - start_time
+        logger.error(f"ERROR: {request.method} {request.url.path} - {str(e)} - Time: {process_time:.3f}s")
+        raise
 
-# --- Rota Principal --- (Opcional)
-@app.get("/", tags=["Info"], summary="Endpoint inicial da API")
+
+# ============================================================================
+# TRATAMENTO DE ERROS
+# ============================================================================
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handler para exceções HTTP."""
+    logger.warning(f"HTTP Exception: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": True,
+            "status_code": exc.status_code,
+            "message": exc.detail,
+            "path": request.url.path
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handler para exceções gerais."""
+    logger.error(f"Unhandled Exception: {type(exc).__name__} - {str(exc)}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": True,
+            "status_code": 500,
+            "message": "Erro interno do servidor",
+            "path": request.url.path
+        }
+    )
+
+
+# ============================================================================
+# EVENTOS DE INICIALIZAÇÃO
+# ============================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Eventos executados na inicialização da aplicação."""
+    logger.info("Iniciando aplicação FastAPI...")
+    
+    # Criar tabelas do banco de dados
+    try:
+        db_manager.create_tables()
+        logger.info("Banco de dados inicializado com sucesso")
+    except Exception as e:
+        logger.error(f"Erro ao inicializar banco de dados: {e}")
+    
+    logger.info(f"Aplicação {settings.PROJECT_NAME} v{settings.VERSION} iniciada com sucesso!")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Eventos executados no encerramento da aplicação."""
+    logger.info("Encerrando aplicação FastAPI...")
+
+
+# ============================================================================
+# ROTAS
+# ============================================================================
+
+@app.get("/", tags=["Root"])
 async def root():
-    return {"message": "Bem-vindo à API Comparativa FastAPI (Abstract Factory Refatorado)!"}
+    """Endpoint raiz da aplicação."""
+    return {
+        "message": f"Bem-vindo ao {settings.PROJECT_NAME}!",
+        "version": settings.VERSION,
+        "description": settings.PROJECT_DESCRIPTION,
+        "docs": "/docs",
+        "redoc": "/redoc",
+        "api": {
+            "users": "/api/v1/users",
+            "products": "/api/v1/products",
+            "health": "/health"
+        },
+        "features": [
+            "Autenticação JWT",
+            "CRUD completo de usuários",
+            "CRUD completo de produtos",
+            "Paginação e filtros",
+            "Logging estruturado",
+            "Validação de dados",
+            "Tratamento de erros",
+            "Documentação automática"
+        ]
+    }
 
-# --- Instruções para Execução ---
-# uvicorn comparasion.fastapiApp.main:app --reload --port 8001
 
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """Endpoint de verificação de saúde."""
+    return {
+        "status": "healthy",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "timestamp": time.time(),
+        "database": "connected"
+    }
+
+
+# Incluir routers da API
+app.include_router(users_router, prefix="/api/v1")
+app.include_router(products_router, prefix="/api/v1")
+
+
+# ============================================================================
+# EXECUÇÃO PRINCIPAL
+# ============================================================================
+
+if __name__ == "__main__":
+    logger.info(f"Iniciando servidor FastAPI em {settings.HOST}:{settings.PORT}")
+    
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG,
+        log_level=settings.LOG_LEVEL.lower(),
+        access_log=True
+    )
