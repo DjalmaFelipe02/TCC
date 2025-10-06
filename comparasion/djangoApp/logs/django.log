@@ -207,3 +207,4 @@ WARNING 2025-10-04 20:31:11,985 log 11668 35792 Unauthorized: /api/v1/users/regi
 INFO 2025-10-04 20:31:11,987 middleware 11668 35792 REQUEST: POST /api/v1/users/register/ - User:  - IP: 127.0.0.1
 INFO 2025-10-04 20:31:11,988 middleware 11668 35792 RESPONSE: POST /api/v1/users/register/ - Status: 401 - Duration: 0.001s
 WARNING 2025-10-04 20:31:11,988 log 11668 35792 Unauthorized: /api/v1/users/register/
+INFO 2025-10-06 19:05:26,687 autoreload 31504 16548 Watching for file changes with StatReloader
