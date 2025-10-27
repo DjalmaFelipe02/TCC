@@ -17,6 +17,7 @@ class DjangoAPIUser(HttpUser):
     payment_method_ids = []
 
     def on_start(self):
+        self.session_prefix = str(uuid.uuid4())[:8]
         # Garante que haja pelo menos um usuário, categoria e método de pagamento para as operações subsequentes
         self.create_user()
         self.create_category()
@@ -26,8 +27,8 @@ class DjangoAPIUser(HttpUser):
     @task(3)
     def create_user(self):
         user_data = {
-            "name": f"User {uuid.uuid4()}",
-            "email": f"user_{uuid.uuid4()}@example.com",
+            "name": f"{self.session_prefix}_User_{uuid.uuid4()}",
+            "email": f"user_{self.session_prefix}_{uuid.uuid4()}@example.com",
             "phone": "11999999999",
             "birth_date": "1990-01-01",
             "address": "Rua Exemplo, 123"
@@ -36,7 +37,6 @@ class DjangoAPIUser(HttpUser):
         if response.status_code == 201:
             self.user_ids.append(response.json()["id"])
         else:
-            # log detalhado para debugar 500/400/409
             try:
                 body = response.json()
             except Exception:
@@ -80,15 +80,14 @@ class DjangoAPIUser(HttpUser):
 
     @task(3)
     def create_product(self):
-        if not self.category_ids: # Garante que haja uma categoria para associar
-            self.create_category() # Cria uma categoria se não houver
+        if not self.category_ids: 
+            self.create_category() 
 
         product_data = {
             "name": f"Product {uuid.uuid4()}",
             "description": "Awesome product",
             "price": round(random.uniform(10.0, 1000.0), 2),
             "stock": random.randint(1, 100),
-            # enviar category_id (nome esperado pelo serializer)
             "category_id": random.choice(self.category_ids)
         }
         response = self.client.post("/api/products/", json=product_data)
@@ -120,7 +119,6 @@ class DjangoAPIUser(HttpUser):
             product_id = self.product_ids.pop(0)
             self.client.delete(f"/api/products/{product_id}/")
 
-    # --- Order Endpoints --- #
     @task(3)
     def create_order(self):
         if not self.user_ids: 
@@ -151,9 +149,13 @@ class DjangoAPIUser(HttpUser):
 
     @task(5)
     def get_single_order(self):
-        if self.order_ids:
-            order_id = random.choice(self.order_ids)
-            self.client.get(f"/api/orders/{order_id}/")
+        if not self.order_ids:
+            return
+        order_id = random.choice(self.order_ids)
+        r = self.client.get(f"/api/orders/{order_id}/")
+        if r.status_code == 404:
+            print(f"[WARN] Order {order_id} não existe mais — removendo da lista")
+            self.order_ids.remove(order_id)
 
     @task(2)
     def update_order(self):
@@ -166,7 +168,9 @@ class DjangoAPIUser(HttpUser):
     def delete_order(self):
         if self.order_ids:
             order_id = self.order_ids.pop(0)
-            self.client.delete(f"/api/orders/{order_id}/")
+            r = self.client.delete(f"/api/orders/{order_id}/")
+            if r.status_code == 404:
+                print(f"[INFO] Order {order_id} já não existia (404 ignorado)")
 
     @task(3)
     def create_order_item(self):
@@ -236,7 +240,10 @@ class DjangoAPIUser(HttpUser):
     def get_single_order_item(self):
         if self.order_item_ids:
             order_item_id = random.choice(self.order_item_ids)
-            self.client.get(f"/api/orders/items/{order_item_id}/")
+            r = self.client.get(f"/api/orders/items/{order_item_id}/")
+            if r.status_code == 404:
+                print(f"[WARN] OrderItem {order_item_id} não encontrado — removendo da lista")
+                self.order_item_ids.remove(order_item_id)
 
     @task(2)
     def update_order_item(self):
@@ -288,7 +295,9 @@ class DjangoAPIUser(HttpUser):
             "order": random.choice(self.order_ids),
             "payment_method": random.choice(self.payment_method_ids),
             "amount": round(random.uniform(50.0, 2000.0), 2),
-            "status": random.choice([c[0] for c in [('pending','pending'),('completed','completed'),('failed','failed')]])
+            "currency": "BRL",
+            "status": random.choice(["pending", "completed", "failed"])
+            # "status": random.choice([c[0] for c in [('pending','pending'),('completed','completed'),('failed','failed')]])
         }
         response = self.client.post("/api/payments/", json=payment_data)
         if response.status_code == 201:
@@ -302,13 +311,14 @@ class DjangoAPIUser(HttpUser):
     def get_single_payment(self):
         if self.payment_ids:
             payment_id = random.choice(self.payment_ids)
-            self.client.get(f"/api/payments/{payment_id}/")
-
+            r = self.client.get(f"/api/payments/{payment_id}/")
+            if r.status_code == 404:
+                self.payment_ids.remove(payment_id)
     @task(2)
     def update_payment(self):
         if self.payment_ids:
             payment_id = random.choice(self.payment_ids)
-            updated_data = {"status": "refunded"}
+            updated_data = {"status": random.choice(["pending", "completed", "failed"])}
             self.client.patch(f"/api/payments/{payment_id}/", json=updated_data)
 
     @task(1)
