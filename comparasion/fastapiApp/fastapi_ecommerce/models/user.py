@@ -1,15 +1,14 @@
-import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Date
+from sqlalchemy import Column, String, DateTime, Date , Integer
 from sqlalchemy.orm import relationship
 from fastapi_ecommerce.database import Base
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(100), nullable=False)
-    email = Column(String(120), unique=True, nullable=False)
+    email = Column(String(120), unique=True, nullable=False, index=True)
     phone = Column(String(20), nullable=True)
     birth_date = Column(Date, nullable=True)
     address = Column(String(255), nullable=True)

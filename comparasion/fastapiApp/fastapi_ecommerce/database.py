@@ -1,24 +1,3 @@
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker, declarative_base, relationship
-# from fastapi_ecommerce.core.config import DATABASE_URL
-
-# engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-# Base = declarative_base()
-
-# # Import all models here to ensure they are registered with Base.metadata
-# from fastapi_ecommerce.models.user import User
-# from fastapi_ecommerce.models.product import Category, Product
-# from fastapi_ecommerce.models.order import Order, OrderItem
-# from fastapi_ecommerce.models.payment import PaymentMethod, Payment
-
-# # Define relationships for back_populates that were not defined in models directly
-# User.orders = relationship("Order", back_populates="user")
-# User.payment_methods = relationship("PaymentMethod", back_populates="user")
-
-# Order.payments = relationship("Payment", back_populates="order")
-
-# ...existing code...
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
@@ -27,22 +6,60 @@ from pathlib import Path
 DB_PATH = Path(__file__).resolve().parent / "db.sqlite3"
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-# keep check_same_thread for SQLite + FastAPI
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# Configuração do engine com otimizações para SQLite
+engine = create_engine(
+    DATABASE_URL, 
+    connect_args={
+        "check_same_thread": False,  # Necessário para FastAPI com SQLite
+        "timeout": 30  # Timeout para evitar locks
+    },
+    pool_pre_ping=True,  # Verifica conexões antes de usar
+    echo=False  # Mude para True para debug de SQL
+)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Configuração do SessionLocal
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
+    expire_on_commit=False  # ← CRÍTICO: Evita problemas de sessão entre requests
+)
+
 Base = declarative_base()
 
+# ============================================================================
+# Dependency get_db() - IMPORTAR ESTA FUNÇÃO EM TODOS OS ROUTERS
+# ============================================================================
+
+def get_db():
+    """
+    Dependency que fornece uma sessão do banco de dados.
+    Use como: db: Session = Depends(get_db)
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+# ============================================================================
+
 def init_db():
+    """Inicializa o banco de dados e cria todas as tabelas"""
     from fastapi_ecommerce.models.user import User
     from fastapi_ecommerce.models.product import Category, Product
     from fastapi_ecommerce.models.order import Order, OrderItem
     from fastapi_ecommerce.models.payment import PaymentMethod, Payment
-    User.orders = relationship("Order", back_populates="user")
-    User.payment_methods = relationship("PaymentMethod", back_populates="user")
-
-    Order.payments = relationship("Payment", back_populates="order")
-
-    Base.metadata.create_all(bind=engine)
-    # Define relationships for back_populates that were not defined in models directly
     
+    # Define relationships dinâmicos (se necessário)
+    # Nota: Idealmente esses relationships deveriam estar nos models
+    User.orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
+    User.payment_methods = relationship("PaymentMethod", back_populates="user", cascade="all, delete-orphan")
+    Order.payments = relationship("Payment", back_populates="order", cascade="all, delete-orphan")
+    
+    # Cria todas as tabelas
+    Base.metadata.create_all(bind=engine)
+    print("✅ Banco de dados inicializado com sucesso!")

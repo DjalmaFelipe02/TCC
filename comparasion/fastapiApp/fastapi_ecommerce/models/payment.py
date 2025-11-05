@@ -7,8 +7,8 @@ from fastapi_ecommerce.database import Base
 class PaymentMethod(Base):
     __tablename__ = "payment_methods"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     type = Column(String(20), nullable=False)
     name = Column(String(100), nullable=False)
     is_default = Column(Boolean, default=False)
@@ -21,9 +21,9 @@ class PaymentMethod(Base):
 class Payment(Base):
     __tablename__ = "payments"
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = Column(String(36), ForeignKey("orders.id"), nullable=False)
-    payment_method_id = Column(String(36), ForeignKey("payment_methods.id"), nullable=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    payment_method_id = Column(Integer, ForeignKey("payment_methods.id"), nullable=True)
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(3), default="BRL")
     status = Column(String(20), default="pending")
@@ -32,4 +32,3 @@ class Payment(Base):
 
     order = relationship("Order", back_populates="payments")
     payment_method = relationship("PaymentMethod", back_populates="payments")
-
