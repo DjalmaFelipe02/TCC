@@ -4,16 +4,13 @@ from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 import os
 
-
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASSWORD = os.getenv("DB_PASSWORD", "*******")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "3306")
 DB_NAME = os.getenv("DB_NAME", "ecommerce_fa") 
 
-
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
 
 engine = create_engine(
     DATABASE_URL,
@@ -32,10 +29,6 @@ Base = declarative_base()
 
 
 def get_db():
-    """
-    Dependency que fornece uma sessão do banco de dados.
-    Use como: db: Session = Depends(get_db)
-    """
     db = SessionLocal()
     try:
         yield db
@@ -46,7 +39,7 @@ def get_db():
         db.close()
 
 def init_db():
-    """Inicializa o banco de dados e cria todas as tabelas"""
+   
     from fastapi_ecommerce.models.user import User
     from fastapi_ecommerce.models.product import Category, Product
     from fastapi_ecommerce.models.order import Order, OrderItem
