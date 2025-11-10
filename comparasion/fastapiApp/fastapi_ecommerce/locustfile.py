@@ -344,4 +344,9 @@ def on_test_start(environment, **kwargs):
 def on_test_stop(environment, **kwargs):
     logger.info("=" * 60)
     logger.info("🏁 TESTE FINALIZADO")
+    stats = environment.stats
+    logger.info(f"📊 Total requests: {stats.total.num_requests}")
+    logger.info(f"❌ Total failures: {stats.total.num_failures}")
+    logger.info(f"⚡ Avg response time: {stats.total.avg_response_time:.2f}ms")
+    logger.info(f"✅ Success rate: {((stats.total.num_requests - stats.total.num_failures) / stats.total.num_requests * 100):.2f}%")
     logger.info("=" * 60)

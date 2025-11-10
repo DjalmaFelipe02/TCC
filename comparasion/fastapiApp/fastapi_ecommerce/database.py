@@ -1,21 +1,30 @@
 # Imports originais (mantidos)
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, NullPool
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
 import os
 
 DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "*******")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "2213")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "3306")
 DB_NAME = os.getenv("DB_NAME", "ecommerce_fa") 
 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+# engine = create_engine(
+#     DATABASE_URL,
+#     poolclass=NullPool,   # sem pooling: cria/fecha conexão a cada uso
+#     pool_pre_ping=True,
+#     echo=False
+# )
+
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,  
-    echo=False          
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    echo=False
 )
 
 SessionLocal = sessionmaker(

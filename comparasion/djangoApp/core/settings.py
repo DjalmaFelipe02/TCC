@@ -83,7 +83,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'ecommerce_django',
         'USER': 'root',
-        'PASSWORD': '*****',  # ALTERE AQUI
+        'PASSWORD': '2213',  # ALTERE AQUI
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
@@ -91,11 +91,11 @@ DATABASES = {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
         #Configurações de conexão para evitar "Too many connections"
-        'CONN_MAX_AGE': 60,  # Reutiliza conexões por 60 segundos
-        'CONN_HEALTH_CHECKS': True,  # Verifica saúde das conexões
+        'CONN_MAX_AGE': 600,  # Reutiliza conexões por 60 segundos
+        # 'CONN_HEALTH_CHECKS': True,  # Verifica saúde das conexões
     }
 }
-
+#CONN_MAX_AGE = 0  # Desativa reutilização de conexões por padrão
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

@@ -1,7 +1,11 @@
-from locust import HttpUser, task, between
+from locust import HttpUser, task, between, events
 import random
 import uuid
-import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class EcomUser(HttpUser):
     """
@@ -237,3 +241,14 @@ class EcomUser(HttpUser):
         except Exception:
             body = resp.text
         print(f"[Locust] {name} -> {resp.status_code} : {body}")
+
+@events.test_stop.add_listener
+def on_test_stop(environment, **kwargs):
+    logger.info("=" * 60)
+    logger.info("🏁 TESTE FINALIZADO")
+    stats = environment.stats
+    logger.info(f"📊 Total requests: {stats.total.num_requests}")
+    logger.info(f"❌ Total failures: {stats.total.num_failures}")
+    logger.info(f"⚡ Avg response time: {stats.total.avg_response_time:.2f}ms")
+    logger.info(f"✅ Success rate: {((stats.total.num_requests - stats.total.num_failures) / stats.total.num_requests * 100):.2f}%")
+    logger.info("=" * 60)
