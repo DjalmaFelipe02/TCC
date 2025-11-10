@@ -1,7 +1,7 @@
 from rest_framework import viewsets, generics
+from rest_framework.permissions import AllowAny
 from .models import Order, OrderItem
 from .serializers import OrderSerializer, OrderItemSerializer
-from rest_framework.permissions import AllowAny
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all().order_by('-created_at')
@@ -11,8 +11,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
-    lookup_field = 'id'
-    lookup_value_regex = r'[0-9a-fA-F\-]+'  # aceita UUID com hífens
+    permission_classes = [AllowAny]
 
 class OrderItemsByOrderAPIView(generics.ListCreateAPIView):
     serializer_class = OrderItemSerializer

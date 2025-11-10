@@ -1,35 +1,35 @@
+# Imports originais (mantidos)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.ext.declarative import declarative_base
-from pathlib import Path
+import os
 
-DB_PATH = Path(__file__).resolve().parent / "db.sqlite3"
-DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-# Configuração do engine com otimizações para SQLite
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "*******")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "3306")
+DB_NAME = os.getenv("DB_NAME", "ecommerce_fa") 
+
+
+DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+
 engine = create_engine(
-    DATABASE_URL, 
-    connect_args={
-        "check_same_thread": False,  # Necessário para FastAPI com SQLite
-        "timeout": 30  # Timeout para evitar locks
-    },
-    pool_pre_ping=True,  # Verifica conexões antes de usar
-    echo=False  # Mude para True para debug de SQL
+    DATABASE_URL,
+    pool_pre_ping=True,  
+    echo=False          
 )
 
-# Configuração do SessionLocal
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,
-    expire_on_commit=False  # ← CRÍTICO: Evita problemas de sessão entre requests
+    expire_on_commit=False
 )
 
 Base = declarative_base()
 
-# ============================================================================
-# Dependency get_db() - IMPORTAR ESTA FUNÇÃO EM TODOS OS ROUTERS
-# ============================================================================
 
 def get_db():
     """
@@ -45,8 +45,6 @@ def get_db():
     finally:
         db.close()
 
-# ============================================================================
-
 def init_db():
     """Inicializa o banco de dados e cria todas as tabelas"""
     from fastapi_ecommerce.models.user import User
@@ -54,12 +52,9 @@ def init_db():
     from fastapi_ecommerce.models.order import Order, OrderItem
     from fastapi_ecommerce.models.payment import PaymentMethod, Payment
     
-    # Define relationships dinâmicos (se necessário)
-    # Nota: Idealmente esses relationships deveriam estar nos models
     User.orders = relationship("Order", back_populates="user", cascade="all, delete-orphan")
     User.payment_methods = relationship("PaymentMethod", back_populates="user", cascade="all, delete-orphan")
     Order.payments = relationship("Payment", back_populates="order", cascade="all, delete-orphan")
     
-    # Cria todas as tabelas
     Base.metadata.create_all(bind=engine)
-    print("✅ Banco de dados inicializado com sucesso!")
+    print("✅ Banco de dados MySQL inicializado com sucesso!")

@@ -1,73 +1,98 @@
-**"Análise Comparativa: FastAPI vs Flask na Aplicação de Padrões de Projeto em Frameworks Web Modernos"**. Aqui está uma análise detalhada de como o trabalho se relaciona com o tema:
+# ANÁLISE COMPARATIVA DE FRAMEWORKS WEB PYTHON
+## Um estudo sobre FastAPI, Flask e Django na construção de APIs REST
 
----
+Resumo curto
+----------
+Este repositório contém três implementações de uma API de e‑commerce — usando Django (Django REST Framework), FastAPI e Flask — com foco em aplicar padrões de projeto e comparar estrutura, desempenho e testabilidade entre os frameworks.
 
-### **1. Aplicação de Padrões de Projeto**
-Os padrões de projeto foram implementados em ambos os frameworks, o que é essencial para o tema. Aqui está como cada padrão foi aplicado:
+Estrutura do repositório
+------------------------
+- djangoApp/      — aplicação Django (manage.py, apps, testes, locustfile)
+- fastapiApp/     — aplicação FastAPI (fastapi_ecommerce, testes, locustfile)
+- flaskApp/       — aplicação Flask (flask_ecommerce, rotas, locustfile)
+- requirements.txt
 
-#### **1.1. Abstract Factory**
-- **Objetivo**: Criar objetos de serialização (JSON e XML) sem especificar suas classes concretas.
-- **Implementação**:
-  - Foi implementado um `SerializerFactory` que cria instâncias de `JsonSerializer` ou `XmlSerializer` com base no formato solicitado.
-  - O padrão foi aplicado tanto no Flask quanto no FastAPI, garantindo consistência.
+Pré-requisitos
+--------------
+- Python 3.11 (ou compatível)
+- Git (opcional)
+- Ambiente virtual recomendado (venv)
+- Drivers de banco conforme uso (ex: PyMySQL, psycopg2)
 
-#### **1.2. Strategy**
-- **Objetivo**: Permitir que diferentes estratégias de pagamento (cartão de crédito e PayPal) sejam usadas de forma intercambiável.
-- **Implementação**:
-  - Foi implementada a classe `PaymentProcessor`, que aceita estratégias como `CreditCardStrategy` e `PayPalStrategy`.
-  - Ambas as estratégias foram aplicadas em rotas específicas nos dois frameworks.
+Instalação geral (Windows)
+--------------------------
+1. Abra terminal na raiz do repositório (comparasion).
+2. Crie/ative venv:
+   - python -m venv venv
+   - .\venv\Scripts\activate
+3. Instale dependências:
+   - python -m pip install -r requirements.txt
 
-#### **1.3. Facade**
-- **Objetivo**: Simplificar a interação com subsistemas complexos, como estoque, cálculo de frete e impostos.
-- **Implementação**:
-  - A classe `CheckoutFacade` encapsula a lógica de interação com os subsistemas `InventoryService`, `ShippingService` e `TaxService`.
-  - Essa abordagem foi aplicada tanto no Flask quanto no FastAPI.
+Executando a aplicação Django
+-----------------------------
+1. Vá para a pasta do projeto Django:
+   - cd djangoApp
+2. Ative venv (se necessário) e instale dependências (já feito na raiz).
+3. Migre o banco:
+   - python manage.py migrate
+4. Rode o servidor:
+   - python manage.py runserver
+5. URL padrão:
+   - http://127.0.0.1:8000
 
----
+Executando a aplicação FastAPI
+------------------------------
+1. Entre na pasta FastAPI:
+   - cd fastapiApp
+2. Ative venv (se necessário).
+3. Rode com Uvicorn (assumindo o módulo fastapi_ecommerce.main:app):
+   - uvicorn fastapi_ecommerce.main:app --reload --host 127.0.0.1 --port 8000
+4. Docs interativos:
+   - http://127.0.0.1:8000/docs
 
-### **2. Comparação entre Flask e FastAPI**
-O trabalho também aborda a implementação dos padrões de projeto nos dois frameworks, permitindo uma análise comparativa.
-Aqui estão os pontos que podem ser destacados:
+Executando a aplicação Flask
+----------------------------
+1. Entre na pasta Flask:
+   - cd flaskApp
+2. Ative venv (se necessário).
+3. Se a app usa factory `create_app` em `flask_ecommerce.app`, rode:
+   - set FLASK_APP=flask_ecommerce.app:create_app
+   - set FLASK_ENV=development
+   - flask run --host=127.0.0.1 --port=5000
+   Ou simplesmente:
+   - python -m flask --app flask_ecommerce.app --debug run
+4. URL padrão:
+   - http://127.0.0.1:5000
 
-#### **2.1. Estrutura e Organização**
-- **Flask**:
-  - É mais flexível, mas exige mais configuração manual.
-  - As rotas e dependências precisam ser configuradas explicitamente.
-- **FastAPI**:
-  - Oferece suporte nativo para validação de dados com Pydantic e injeção de dependências.
-  - A documentação interativa automática (Swagger UI) facilita o teste das rotas.
+Rodando testes
+--------------
+- Django (a partir de djangoApp):
+  - python manage.py test
+- FastAPI (a partir de fastapiApp):
+  - set PYTHONPATH=%CD%
+  - pytest
+- Flask (a partir de flaskApp):
+  - pytest  (ou configure/execute testes específicos conforme a suite)
 
-#### **2.2. Facilidade de Uso**
-- **Flask**:
-  - Simples e direto, mas exige mais esforço para implementar funcionalidades avançadas, como validação de dados.
-- **FastAPI**:
-  - Mais moderno, com recursos integrados que reduzem o código boilerplate.
+Load testing com Locust
+-----------------------
+- Locust files:
+  - djangoApp/locustfile.py
+  - fastapiApp/fastapi_ecommerce/locustfile.py
+  - flaskApp/flask_ecommerce/locustfile.py
+- Exemplo (FastAPI):
+  - cd fastapiApp
+  - locust -f fastapi_ecommerce/locustfile.py --host=http://127.0.0.1:8000
+- Abra UI:
+  - http://127.0.0.1:8089
 
-#### **2.3. Desempenho**
-- **Flask**:
-  - Baseado em WSGI, é mais adequado para aplicações síncronas.
-- **FastAPI**:
-  - Baseado em ASGI, é mais rápido e eficiente para aplicações assíncronas.
+Boas práticas e observações
+---------------------------
+- Use variáveis de ambiente para credenciais e URIs de banco (DATABASE_URL).
+- Ative o driver de BD correto se usar MySQL/Postgres (PyMySQL, psycopg2).
+- Mantenha testes pequenos e independentes; use bases de teste isoladas.
+- Para comparação de desempenho, documente cenários (payloads, número de usuários, métricas).
 
-#### **2.4. Testabilidade**
-- Ambos os frameworks foram testados com ferramentas como `pytest` e `locust`, permitindo uma análise de desempenho e funcionalidade.
-
----
-
-### **3. Ferramentas Utilizadas**
-- **Flask** e **FastAPI**: Para implementar as rotas e padrões de projeto.
-- **Locust**: Para realizar testes de carga e comparar o desempenho dos frameworks.
-- **Pytest**: Para validar as funcionalidades das rotas e padrões de projeto.
-
----
-
-### **4. Pontos de Melhoria**
-Para enriquecer ainda mais a análise comparativa, você pode:
-1. **Documentar os Resultados**:
-   - Criar tabelas ou gráficos comparando o desempenho (tempo de resposta, throughput, etc.) entre Flask e FastAPI.
-2. **Explorar Cenários Reais**:
-   - Simular cenários mais complexos, como múltiplos usuários simultâneos ou integração com bancos de dados.
-3. **Analisar Escalabilidade**:
-   - Comparar como cada framework se comporta em cenários de alta carga.
-
----
+Contato / Autor
+---------------
+Trabalho de conclusão (TCC) — implementação para análise comparativa entre FastAPI, Flask e Django.

@@ -80,8 +80,19 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'ecommerce_django',
+        'USER': 'root',
+        'PASSWORD': '*****',  # ALTERE AQUI
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
+        #Configurações de conexão para evitar "Too many connections"
+        'CONN_MAX_AGE': 60,  # Reutiliza conexões por 60 segundos
+        'CONN_HEALTH_CHECKS': True,  # Verifica saúde das conexões
     }
 }
 
@@ -127,4 +138,8 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-REST_FRAMEWORK={'TEST_REQUEST_DEFAULT_FORMAT':'json'}
+REST_FRAMEWORK = {
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 100
+}

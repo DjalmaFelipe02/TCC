@@ -1,22 +1,29 @@
 from flask import Flask
 from flask_migrate import Migrate
 from flask_cors import CORS
-from .db import db  # usar a instância do db definida em db.py
+from .db import db  
+from urllib.parse import quote_plus
 import os
+
 
 def create_app():
     app = Flask(__name__, instance_relative_config=False)
 
-    # DB: usa caminho relativo ao projeto flaskApp
-    db_path = os.path.join(os.path.dirname(__file__), "..", "ecommerce.db")
-    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.abspath(db_path)}"
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        db_user = os.getenv('DB_USER', 'root')
+        db_password = quote_plus(os.getenv('DB_PASSWORD', '*******'))
+        db_host = os.getenv('DB_HOST', 'localhost')
+        db_name = os.getenv('DB_NAME', 'ecommerce_flask')
+        database_url = f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}"
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
     migrate = Migrate(app, db)
-    CORS(app)  # Enable CORS for all routes
+    CORS(app)
 
-    # registrando blueprints (certifique-se que os módulos existem)
     from .routes.users import users_bp
     from .routes.products import products_bp
     from .routes.orders import orders_bp
@@ -29,7 +36,7 @@ def create_app():
 
     # criar tabelas se necessário
     with app.app_context():
-        from . import models  # importa models para registrar metadata
+        from . import models  
         db.create_all()
 
     return app
