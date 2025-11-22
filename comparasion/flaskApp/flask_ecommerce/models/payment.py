@@ -9,8 +9,8 @@ from .user import User
 from .order import Order
 
 class PaymentMethod(db.Model):
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("user.id"), nullable=False)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     type = db.Column(db.String(20), nullable=False)  # e.g., 'credit_card', 'pix'
     name = db.Column(db.String(100), nullable=False)
     is_default = db.Column(db.Boolean, default=False)
@@ -34,9 +34,9 @@ class PaymentMethod(db.Model):
         }
 
 class Payment(db.Model):
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = db.Column(db.String(36), db.ForeignKey("order.id"), nullable=False)
-    payment_method_id = db.Column(db.String(36), db.ForeignKey("payment_method.id"), nullable=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
+    payment_method_id = db.Column(db.Integer, db.ForeignKey("payment_method.id"), nullable=True)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(3), default="BRL")
     status = db.Column(db.String(20), default="pending") # e.g., 'pending', 'completed', 'failed'

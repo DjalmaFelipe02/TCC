@@ -6,8 +6,8 @@ from .user import User
 from .product import Product
 
 class Order(db.Model):
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(36), db.ForeignKey("user.id"), nullable=False)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     address = db.Column(db.String(255), nullable=False)
     total_amount = db.Column(db.Numeric(12, 2), default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -29,9 +29,9 @@ class Order(db.Model):
         }
 
 class OrderItem(db.Model):
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    order_id = db.Column(db.String(36), db.ForeignKey("order.id"), nullable=False)
-    product_id = db.Column(db.String(36), db.ForeignKey("product.id"), nullable=False)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    order_id = db.Column(db.Integer, db.ForeignKey("order.id"), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
     quantity = db.Column(db.Integer, default=1)
 
     product = db.relationship("Product", backref=db.backref("order_items", lazy=True))

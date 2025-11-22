@@ -1,6 +1,5 @@
 from locust import HttpUser, task, between, events
 import random
-import uuid
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -49,9 +48,10 @@ class EcomUser(HttpUser):
     # ------- USERS -------
     @task(3)
     def create_user(self):
+        rand_num = random.randint(100000, 999999)
         payload = {
-            "name": f"Locust User {uuid.uuid4().hex[:6]}",
-            "email": f"locust_{uuid.uuid4().hex[:6]}@example.com",
+            "name": f"Locust User {rand_num}",
+            "email": f"locust_{rand_num}@example.com",
             "phone": f"11{random.randint(900000000,999999999)}",
             "birth_date": "1990-01-01",
             "address": "Rua Locust, 1"
@@ -69,7 +69,7 @@ class EcomUser(HttpUser):
     # ------- CATEGORIES & PRODUCTS -------
     @task(2)
     def create_category(self):
-        payload = {"name": f"Cat {uuid.uuid4().hex[:5]}", "description": "Criada pelo Locust"}
+        payload = {"name": f"Cat {random.randint(10000, 99999)}", "description": "Criada pelo Locust"}
         r = self.client.post("/api/products/categories", json=payload)
         if r.status_code == 201:
             self.category_ids.append(r.json().get("id"))
@@ -85,7 +85,7 @@ class EcomUser(HttpUser):
         if not self.category_ids:
             self.create_category()
         payload = {
-            "name": f"Prod {uuid.uuid4().hex[:6]}",
+            "name": f"Prod {random.randint(100000, 999999)}",
             "description": "Produto de teste",
             "price": round(random.uniform(10, 500), 2),
             "stock": random.randint(1, 50),
@@ -159,8 +159,6 @@ class EcomUser(HttpUser):
                 continue
             self._log_fail(f"CREATE_ORDER_ITEM @ {ep}", r)
             return
-        # no endpoint accepted
-        # keep quiet to avoid noise
 
     @task(4)
     def list_order_items(self):
@@ -200,7 +198,11 @@ class EcomUser(HttpUser):
     def create_payment_method(self):
         if not self.user_ids:
             self.create_user()
-        payload = {"user": random.choice(self.user_ids) if self.user_ids else None, "type": "credit_card", "name": f"Card {uuid.uuid4().hex[:6]}"}
+        payload = {
+            "user": random.choice(self.user_ids) if self.user_ids else None, 
+            "type": "credit_card", 
+            "name": f"Card {random.randint(100000, 999999)}"
+        }
         r = self.client.post("/api/payments/methods", json=payload)
         if r.status_code == 201:
             mid = r.json().get("id")
@@ -221,7 +223,11 @@ class EcomUser(HttpUser):
             self.create_payment_method()
         if not self.order_ids or not self.payment_method_ids:
             return
-        payload = {"order": random.choice(self.order_ids), "payment_method": random.choice(self.payment_method_ids), "amount": round(random.uniform(10,500),2)}
+        payload = {
+            "order": random.choice(self.order_ids), 
+            "payment_method": random.choice(self.payment_method_ids), 
+            "amount": round(random.uniform(10,500),2)
+        }
         r = self.client.post("/api/payments/", json=payload)
         if r.status_code == 201:
             pid = r.json().get("id")
